@@ -1,0 +1,272 @@
+!! Arista DCS-7050SX2-72Q-R
+
+1. NCM snapshot before change and monitor for alerts
+https://rancid.int.godaddy.com/tools/ncm_snapshot.html
+https://skynetphp.int.godaddy.com/public_alerts.php
+
+2. Notify NOC
+
+lfassb0310-01.ams3.gdg
+10.30.0.195
+
+lfassb0310-02.ams3.gdg
+10.30.0.196
+
+!!!  Start with B side
+
+terminal length 0
+show run
+show int desc
+show lacp counters
+show ip bgp sum vrf all
+show ip route summary
+show int stat connected
+show lldp neighbors
+show port-channel summary
+sh ip virtual-router 
+show logg last 3 hour
+show mlag detail
+show mlag
+show mlag config-sanity 
+
+3. Update Route map
+
+!!! MGT SP Route map
+show route-map RM-MGT-SPINE-BLEEDOFF-OUT 
+
+route-map RM-MGT-SPINE-BLEEDOFF-OUT permit 1000
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+show route-map RM-MGT-SPINE-BLEEDOFF-OUT 
+
+!!! SP Route map
+show route-map RM-SPINE-BLEEDOFF-OUT 
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1000
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1010
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1020
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1030
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+show route-map RM-SPINE-BLEEDOFF-OUT 
+
+
+4. Apply bleed off   
+
+router bgp 64600
+neighbor MGT-SPINE route-map RM-MGT-SPINE-BLEEDOFF-IN in
+neighbor MGT-SPINE route-map RM-MGT-SPINE-BLEEDOFF-OUT out
+neighbor SPINE route-map RM-SPINE-BLEEDOFF-IN in
+neighbor SPINE route-map RM-SPINE-BLEEDOFF-OUT out
+
+5. Shutdown server interfaces
+int et1-44
+shut
+
+!! Ping to Server
+fping -f side_b_ip  |  while read pong; do echo "$(date): $pong"; done
+
+show int status conn
+
+6. Shutdown uplinks
+
+int eth48
+shutdown
+int Et49/1
+shutdown
+int eth51/1
+shutdown
+
+7. Upgrade with standard EOS
+boot system flash:EOS-4.19.10M.swi
+
+wr
+
+show int status connected
+
+reload
+  
+show mlag detail   << State of the switch should be secondary
+show extension		<< To confirm security extension is installed. If not, install extension
+
+8. Enable the uplinks
+
+int eth48
+no shutdown
+int Et49/1
+no shutdown
+int eth51/1
+no shutdown
+
+9. Enable servers ports
+
+int et1-44
+no shut
+
+10. Normalize Side B leaf.  
+
+show ip bgp summ
+
+router bgp 64600
+neighbor MGT-SPINE route-map RM-MGT-SPINE-IN in
+neighbor MGT-SPINE route-map RM-MGT-SPINE-OUT out
+neighbor SPINE route-map RM-SPINE-IN in
+neighbor SPINE route-map RM-SPINE-OUT out
+
+11. NCM Snapshot after upgrade. Compare running configs
+
+show run
+show int desc
+show lacp counters
+show ip bgp sum vrf all
+show ip route summary
+show int stat connected
+show lldp neighbors
+show port-channel summary
+sh ip virtual-router 
+show logg last 3 hour
+show mlag detail
+show mlag
+show mlag config-sanity
+
+REPEAT OTHER SIDE
+******************
+
+1. Update Route map
+
+!! MGT Spine RM
+show route-map RM-MGT-SPINE-BLEEDOFF-OUT 
+
+route-map RM-MGT-SPINE-BLEEDOFF-OUT permit 1000
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+show route-map RM-MGT-SPINE-BLEEDOFF-OUT 
+
+!! Spine RM
+
+show route-map RM-SPINE-BLEEDOFF-OUT 
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1000
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1010
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1020
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+route-map RM-SPINE-BLEEDOFF-OUT permit 1030
+set metric +65000
+no set as-path prepend 64600 64600 64600 64600
+
+show route-map RM-SPINE-BLEEDOFF-OUT 
+
+2. Start Side A
+
+terminal length 0
+show run
+show int desc
+show lacp counters
+show ip bgp sum vrf all
+show ip route summary
+show int stat connected
+show lldp neighbors
+show port-channel summary
+sh ip virtual-router 
+show logg last 3 hour
+show mlag detail
+show mlag
+show mlag config-sanity 
+
+3. Apply bleed off   
+
+router bgp 64600
+neighbor MGT-SPINE route-map RM-MGT-SPINE-BLEEDOFF-IN in
+neighbor MGT-SPINE route-map RM-MGT-SPINE-BLEEDOFF-OUT out
+neighbor SPINE route-map RM-SPINE-BLEEDOFF-IN in
+neighbor SPINE route-map RM-SPINE-BLEEDOFF-OUT out
+
+4. Shutdown server interfaces
+int et1-44
+shut
+
+!! Ping to Server
+fping -f side_b_ip  |  while read pong; do echo "$(date): $pong"; done
+
+show int status conn
+
+5. Shutdown uplinks
+
+int eth48
+shutdown
+int Et49/1
+shutdown
+int eth51/1
+shutdown
+
+6. Upgrade with standard EOS
+boot system flash:EOS-4.19.10M.swi
+
+wr
+
+show int status connected
+
+reload
+  
+show mlag detail   << State of the switch should be secondary
+show extension     << To confirm security patch is installed. if not, need to install extension. 
+
+7. Enable the uplinks
+
+int eth48
+no shutdown
+int Et49/1
+no shutdown
+int eth51/1
+no shutdown
+
+8. Enable servers ports
+
+int et1-44
+no shut
+
+9. Normalize Side B leaf.  
+
+show ip bgp summ
+
+router bgp 64600
+neighbor MGT-SPINE route-map RM-MGT-SPINE-IN in
+neighbor MGT-SPINE route-map RM-MGT-SPINE-OUT out
+neighbor SPINE route-map RM-SPINE-IN in
+neighbor SPINE route-map RM-SPINE-OUT out
+
+10. NCM Snapshot after upgrade. Compare running configs
+
+show run
+show int desc
+show lacp counters
+show ip bgp sum vrf all
+show ip route summary
+show int stat connected
+show lldp neighbors
+show port-channel summary
+sh ip virtual-router 
+show logg last 3 hour
+show mlag detail
+show mlag
+show mlag config-sanity
