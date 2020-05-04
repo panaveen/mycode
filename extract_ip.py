@@ -8,7 +8,14 @@ def find_ip(string):
         match = re.findall(pattern, x)
         print(match[0])
 
-f = open('t2_panel', 'r')
-find_ip(f)
-f.close()
+def main():
+    file = input("Enter file name: ")
+    f = open(file, 'r')
+    find_ip(f)
+    f.close()
 
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Interrupted")
