@@ -1,4 +1,6 @@
 #!/usr/bin/python3.6
+
+
 import sys
 import subprocess
 import datetime
@@ -14,6 +16,7 @@ def ip_reach(iplist):
         else:
             print('{} --> Failed'.format(ip))
 
+
 def main():
     #file = input("Enter the host list: ")
     now = datetime.datetime.now()
@@ -25,6 +28,7 @@ def main():
         print("Date and time : {}".format(now.ctime()))
     except IndexError:
         print("File is missing")
+
 
 if __name__ == '__main__':
     try:
